@@ -4,7 +4,6 @@ go 1.13
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.3.3
-	github.com/aliyun/aliyun-oss-go-sdk v2.0.5+incompatible
 	github.com/aws/aws-sdk-go v1.31.5
 	github.com/baiyubin/aliyun-sts-go-sdk v0.0.0-20180326062324-cfa1a18b161f // indirect
 	github.com/duo-labs/webauthn v0.0.0-20191119193225-4bf9a0f776d4
@@ -36,7 +35,7 @@ require (
 	github.com/smartwalle/alipay/v3 v3.0.13
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.6.1
 	github.com/tencentcloud/tencentcloud-sdk-go v3.0.125+incompatible
 	github.com/tencentyun/cos-go-sdk-v5 v0.0.0-20200120023323-87ff3bc489ac
 	github.com/upyun/go-sdk v2.1.0+incompatible

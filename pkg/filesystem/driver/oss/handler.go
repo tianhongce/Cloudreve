@@ -9,12 +9,18 @@ import (
 	"errors"
 	"fmt"
 	model "github.com/HFO4/cloudreve/models"
+	obs "github.com/HFO4/cloudreve/obs"
 	"github.com/HFO4/cloudreve/pkg/filesystem/fsctx"
 	"github.com/HFO4/cloudreve/pkg/filesystem/response"
 	"github.com/HFO4/cloudreve/pkg/request"
 	"github.com/HFO4/cloudreve/pkg/serializer"
-	"github.com/HFO4/cloudreve/pkg/util"
-	"github.com/aliyun/aliyun-oss-go-sdk/oss"
+	"unsafe"
+
+	//"github.com/aliyun/aliyun-oss-go-sdk/oss"
+
+	//"github.com/HFO4/cloudreve/pkg/util"
+	//"github.com/aliyun/aliyun-oss-go-sdk/oss"
+	//"github.com/aliyun/aliyun-oss-go-sdk/sample"
 	"io"
 	"net/url"
 	"path"
@@ -38,9 +44,11 @@ type CallbackPolicy struct {
 
 // Driver 阿里云OSS策略适配器
 type Driver struct {
-	Policy     *model.Policy
-	client     *oss.Client
-	bucket     *oss.Bucket
+	Policy *model.Policy
+	//client     *oss.Client
+	//bucket     *oss.Bucket
+	client     *obs.ObsClient
+	bucket     string //*obs.Bucket
 	HTTPClient request.Client
 }
 
@@ -58,6 +66,26 @@ func (handler *Driver) CORS() error {
 		return err
 	}
 
+	input := &obs.SetBucketCorsInput{}
+	input.Bucket = "testabv"
+	input.CorsRules = []obs.CorsRule{{
+		AllowedOrigin: []string{"*"},
+		AllowedMethod: []string{
+			"GET",
+			"POST",
+			"PUT",
+			"DELETE",
+			"HEAD",
+		},
+		ExposeHeader:  []string{},
+		AllowedHeader: []string{"*"},
+		MaxAgeSeconds: 3600,
+	},}
+
+	_, err := handler.client.SetBucketCors(input)
+	return err
+
+	/*oss
 	return handler.client.SetBucketCORS(handler.Policy.BucketName, []oss.CORSRule{
 		{
 			AllowedOrigin: []string{"*"},
@@ -73,28 +101,34 @@ func (handler *Driver) CORS() error {
 			MaxAgeSeconds: 3600,
 		},
 	})
+	*/
 }
 
 // InitOSSClient 初始化OSS鉴权客户端
 func (handler *Driver) InitOSSClient() error {
+	fmt.Println("InitOSSClient 初始化OSS鉴权客户端")
 	if handler.Policy == nil {
 		return errors.New("存储策略为空")
 	}
 
 	if handler.client == nil {
 		// 初始化客户端
-		client, err := oss.New(handler.Policy.Server, handler.Policy.AccessKey, handler.Policy.SecretKey)
+		fmt.Println("obsobsobs")
+		fmt.Printf("endpoit: %v, ak: %v, sk: %v\n", handler.Policy.Server, handler.Policy.AccessKey, handler.Policy.SecretKey)
+		//client, err := oss.New(handler.Policy.Server, handler.Policy.AccessKey, handler.Policy.SecretKey)
+		//obsClient, err := obs.New(handler.Policy.AccessKey, handler.Policy.SecretKey, handler.Policy.Server)
+		obsClient, err := obs.New("PAIOWFSCLFH2MA4ZD4LM", "mcMllKTwG5ubrfRASvjZtKoEkgK4ucMMnRBRqupL", "https://obs.cn-north-1.myhuaweicloud.com")
 		if err != nil {
 			return err
 		}
-		handler.client = client
+		handler.client = obsClient
 
 		// 初始化存储桶
-		bucket, err := client.Bucket(handler.Policy.BucketName)
-		if err != nil {
-			return err
-		}
-		handler.bucket = bucket
+		//bucket, err := client.Bucket(handler.Policy.BucketName)
+		//if err != nil {
+		//	return err
+		//}
+		handler.bucket = "testabv"//handler.Policy.BucketName
 
 	}
 
@@ -103,6 +137,7 @@ func (handler *Driver) InitOSSClient() error {
 
 // List 列出OSS上的文件
 func (handler Driver) List(ctx context.Context, base string, recursive bool) ([]response.Object, error) {
+	fmt.Println("List 列出OSS上的文件")
 	// 初始化客户端
 	if err := handler.InitOSSClient(); err != nil {
 		return nil, err
@@ -117,26 +152,48 @@ func (handler Driver) List(ctx context.Context, base string, recursive bool) ([]
 	var (
 		delimiter string
 		marker    string
-		objects   []oss.ObjectProperties
+		//objects   []oss.ObjectProperties
+		objects []obs.Content
 		commons   []string
 	)
 	if !recursive {
 		delimiter = "/"
 	}
 
-	for {
-		subRes, err := handler.bucket.ListObjects(oss.Marker(marker), oss.Prefix(base),
-			oss.MaxKeys(1000), oss.Delimiter(delimiter))
+	for{
+		input := &obs.ListObjectsInput{}
+		input.Bucket = handler.bucket
+		input.Marker=marker
+		input.Prefix=base
+		input.MaxKeys=1000
+		input.Delimiter=delimiter
+
+		listObjects, err := handler.client.ListObjects(input)
 		if err != nil {
 			return nil, err
 		}
-		objects = append(objects, subRes.Objects...)
-		commons = append(commons, subRes.CommonPrefixes...)
-		marker = subRes.NextMarker
+
+		objects = append(objects, listObjects.Contents...)
+		commons = append(commons, listObjects.CommonPrefixes...)
+		marker = listObjects.NextMarker
 		if marker == "" {
 			break
 		}
 	}
+
+	//for {
+	//	subRes, err := handler.bucket.ListObjects(oss.Marker(marker), oss.Prefix(base),
+	//		oss.MaxKeys(1000), oss.Delimiter(delimiter))
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	objects = append(objects, subRes.Objects...)
+	//	commons = append(commons, subRes.CommonPrefixes...)
+	//	marker = subRes.NextMarker
+	//	if marker == "" {
+	//		break
+	//	}
+	//}
 
 	// 处理列取结果
 	res := make([]response.Object, 0, len(objects)+len(commons))
@@ -175,6 +232,7 @@ func (handler Driver) List(ctx context.Context, base string, recursive bool) ([]
 
 // Get 获取文件
 func (handler Driver) Get(ctx context.Context, path string) (response.RSCloser, error) {
+	fmt.Println("Get 获取文件")
 	// 通过VersionID禁止缓存
 	ctx = context.WithValue(ctx, VersionID, time.Now().UnixNano())
 
@@ -215,6 +273,7 @@ func (handler Driver) Get(ctx context.Context, path string) (response.RSCloser, 
 
 // Put 将文件流保存到指定目录
 func (handler Driver) Put(ctx context.Context, file io.ReadCloser, dst string, size uint64) error {
+	fmt.Println("Put 将文件流保存到指定目录")
 	defer file.Close()
 
 	// 初始化客户端
@@ -225,38 +284,67 @@ func (handler Driver) Put(ctx context.Context, file io.ReadCloser, dst string, s
 	// 凭证有效期
 	credentialTTL := model.GetIntSetting("upload_credential_timeout", 3600)
 
-	options := []oss.Option{
-		oss.Expires(time.Now().Add(time.Duration(credentialTTL) * time.Second)),
-	}
+	//options := []oss.Option{
+	//	oss.Expires(time.Now().Add(time.Duration(credentialTTL) * time.Second)),
+	//}
 
 	// 上传文件
-	err := handler.bucket.PutObject(dst, file, options...)
+	//err := handler.bucket.PutObject(dst, file, options...)
+	//if err != nil {
+	//	return err
+	//}
+	input := &obs.PutObjectInput{}
+	input.Bucket = handler.bucket
+	input.Key = dst
+	//input.Metadata = map[string]string{"meta": "value"}
+	input.Body = file
+	input.Expires = (time.Now().Add(time.Duration(credentialTTL) * time.Second)).Unix()
+	_, err := handler.client.PutObject(input)
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
 // Delete 删除一个或多个文件，
 // 返回未删除的文件
 func (handler Driver) Delete(ctx context.Context, files []string) ([]string, error) {
+	fmt.Println("Delete 删除一个或多个文件，")
 	// 初始化客户端
 	if err := handler.InitOSSClient(); err != nil {
 		return files, err
 	}
 
 	// 删除文件
-	delRes, err := handler.bucket.DeleteObjects(files)
+	//delRes, err := handler.bucket.DeleteObjects(files)
+
+
+	fmt.Println("删除的文件：",files)
+	var deletes []obs.ObjectToDelete
+
+	for _ , v:= range files{
+		var del obs.ObjectToDelete
+		del.Key=v
+		deletes = append(deletes,del)
+	}
+	input := &obs.DeleteObjectsInput{}
+	input.Bucket = handler.bucket
+	//TODO: file to objects
+	input.Objects=deletes
+	delRes, err := handler.client.DeleteObjects(input)
 
 	if err != nil {
+		fmt.Println("error:" ,err.Error())
 		return files, err
 	}
 
 	// 统计未删除的文件
-	failed := util.SliceDifference(files, delRes.DeletedObjects)
-	if len(failed) > 0 {
-		return failed, errors.New("删除失败")
+	//failed := util.SliceDifference(files, delRes.DeletedObjects)
+	//if len(failed) > 0 {
+	//	return failed, errors.New("删除失败")
+	//}
+	if len(files)!=len(delRes.Deleteds){
+		return []string{}, errors.New("删除失败")
 	}
 
 	return []string{}, nil
@@ -264,6 +352,7 @@ func (handler Driver) Delete(ctx context.Context, files []string) ([]string, err
 
 // Thumb 获取文件缩略图
 func (handler Driver) Thumb(ctx context.Context, path string) (*response.ContentResponse, error) {
+	fmt.Println("Thumb 获取文件缩略图")
 	// 初始化客户端
 	if err := handler.InitOSSClient(); err != nil {
 		return nil, err
@@ -279,12 +368,13 @@ func (handler Driver) Thumb(ctx context.Context, path string) (*response.Content
 
 	thumbParam := fmt.Sprintf("image/resize,m_lfit,h_%d,w_%d", thumbSize[1], thumbSize[0])
 	ctx = context.WithValue(ctx, fsctx.ThumbSizeCtx, thumbParam)
-	thumbOption := []oss.Option{oss.Process(thumbParam)}
+	//thumbOption := []oss.Option{oss.Process(thumbParam)}
 	thumbURL, err := handler.signSourceURL(
 		ctx,
 		path,
 		int64(model.GetIntSetting("preview_timeout", 60)),
-		thumbOption,
+		"",
+		//thumbOption,
 	)
 	if err != nil {
 		return nil, err
@@ -305,6 +395,7 @@ func (handler Driver) Source(
 	isDownload bool,
 	speed int,
 ) (string, error) {
+	fmt.Println("Source 获取外链URL")
 	// 初始化客户端
 	if err := handler.InitOSSClient(); err != nil {
 		return "", err
@@ -315,37 +406,48 @@ func (handler Driver) Source(
 	if file, ok := ctx.Value(fsctx.FileModelCtx).(model.File); ok {
 		fileName = file.Name
 	}
+	//
+	//// 添加各项设置
+	//var signOptions = make([]oss.Option, 0, 2)
+	//if isDownload {
+	//	signOptions = append(signOptions, oss.ResponseContentDisposition("attachment; filename=\""+url.PathEscape(fileName)+"\""))
+	//}
+	//if speed > 0 {
+	//	// Byte 转换为 bit
+	//	speed *= 8
+	//
+	//	// OSS对速度值有范围限制
+	//	if speed < 819200 {
+	//		speed = 819200
+	//	}
+	//	if speed > 838860800 {
+	//		speed = 838860800
+	//	}
+	//	signOptions = append(signOptions, oss.TrafficLimitParam(int64(speed)))
+	//}
 
-	// 添加各项设置
-	var signOptions = make([]oss.Option, 0, 2)
-	if isDownload {
-		signOptions = append(signOptions, oss.ResponseContentDisposition("attachment; filename=\""+url.PathEscape(fileName)+"\""))
-	}
-	if speed > 0 {
-		// Byte 转换为 bit
-		speed *= 8
-
-		// OSS对速度值有范围限制
-		if speed < 819200 {
-			speed = 819200
-		}
-		if speed > 838860800 {
-			speed = 838860800
-		}
-		signOptions = append(signOptions, oss.TrafficLimitParam(int64(speed)))
-	}
-
-	return handler.signSourceURL(ctx, path, ttl, signOptions)
+	return handler.signSourceURL(ctx, path, ttl, fileName)
 }
 
-func (handler Driver) signSourceURL(ctx context.Context, path string, ttl int64, options []oss.Option) (string, error) {
-	signedURL, err := handler.bucket.SignURL(path, oss.HTTPGet, ttl, options...)
+func (handler Driver) signSourceURL(ctx context.Context, path string, ttl int64, fileName string) (string, error) {
+	fmt.Println("signSourceURL")
+	input := &obs.CreateSignedUrlInput{}
+	input.Expires = *(*int)(unsafe.Pointer(&ttl))
+	input.Method = obs.HttpMethodGet
+	input.Bucket = handler.bucket
+	input.Key = path
+	signedUrl, err := handler.client.CreateSignedUrl(input)
 	if err != nil {
 		return "", err
 	}
 
+	//signedURL, err := handler.bucket.SignURL(path, oss.HTTPGet, ttl, options...)
+	//if err != nil {
+	//	return "", err
+	//}
+
 	// 将最终生成的签名URL域名换成用户自定义的加速域名（如果有）
-	finalURL, err := url.Parse(signedURL)
+	finalURL, err := url.Parse(signedUrl.SignedUrl)
 	if err != nil {
 		return "", err
 	}
@@ -356,7 +458,7 @@ func (handler Driver) signSourceURL(ctx context.Context, path string, ttl int64,
 	// 公有空间替换掉Key及不支持的头
 	if !handler.Policy.IsPrivate {
 		query := finalURL.Query()
-		query.Del("OSSAccessKeyId")
+		query.Del("AWSAccessKeyId")
 		query.Del("Signature")
 		query.Del("response-content-disposition")
 		query.Del("x-oss-traffic-limit")
@@ -377,6 +479,10 @@ func (handler Driver) signSourceURL(ctx context.Context, path string, ttl int64,
 
 // Token 获取上传策略和认证Token
 func (handler Driver) Token(ctx context.Context, TTL int64, key string) (serializer.UploadCredential, error) {
+	fmt.Println("Token 获取上传策略和认证Token")
+	fmt.Println(ctx)
+	fmt.Println(TTL)
+	fmt.Println(key)
 	// 读取上下文中生成的存储路径
 	savePath, ok := ctx.Value(fsctx.SavePathCtx).(string)
 	if !ok {
@@ -384,8 +490,9 @@ func (handler Driver) Token(ctx context.Context, TTL int64, key string) (seriali
 	}
 
 	// 生成回调地址
+	fmt.Println("生成回调地址")
 	siteURL := model.GetSiteURL()
-	apiBaseURI, _ := url.Parse("/api/v3/callback/oss/" + key)
+	apiBaseURI, _ := url.Parse("/api/v3/callback/obs/" + key)
 	apiURL := siteURL.ResolveReference(apiBaseURI)
 
 	// 回调策略
@@ -396,10 +503,11 @@ func (handler Driver) Token(ctx context.Context, TTL int64, key string) (seriali
 	}
 
 	// 上传策略
+	fmt.Println("生成上传策略")
 	postPolicy := UploadPolicy{
 		Expiration: time.Now().UTC().Add(time.Duration(TTL) * time.Second).Format(time.RFC3339),
 		Conditions: []interface{}{
-			map[string]string{"bucket": handler.Policy.BucketName},
+			map[string]string{"bucket": "testabv"},
 			[]string{"starts-with", "$key", path.Dir(savePath)},
 		},
 	}
@@ -418,6 +526,7 @@ func (handler Driver) getUploadCredential(ctx context.Context, policy UploadPoli
 	if !ok {
 		return serializer.UploadCredential{}, errors.New("无法获取存储路径")
 	}
+	fmt.Println("存储路径：",savePath)
 
 	// 处理回调策略
 	callbackPolicyEncoded := ""
@@ -438,7 +547,7 @@ func (handler Driver) getUploadCredential(ctx context.Context, policy UploadPoli
 	policyEncoded := base64.StdEncoding.EncodeToString(policyJSON)
 
 	// 签名上传策略
-	hmacSign := hmac.New(sha1.New, []byte(handler.Policy.SecretKey))
+	hmacSign := hmac.New(sha1.New, []byte("mcMllKTwG5ubrfRASvjZtKoEkgK4ucMMnRBRqupL"))
 	_, err = io.WriteString(hmacSign, policyEncoded)
 	if err != nil {
 		return serializer.UploadCredential{}, err
@@ -448,7 +557,7 @@ func (handler Driver) getUploadCredential(ctx context.Context, policy UploadPoli
 	return serializer.UploadCredential{
 		Policy:    fmt.Sprintf("%s:%s", callbackPolicyEncoded, policyEncoded),
 		Path:      savePath,
-		AccessKey: handler.Policy.AccessKey,
+		AccessKey: "PAIOWFSCLFH2MA4ZD4LM",
 		Token:     signature,
 	}, nil
 }
