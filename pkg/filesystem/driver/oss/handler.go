@@ -67,7 +67,7 @@ func (handler *Driver) CORS() error {
 	}
 
 	input := &obs.SetBucketCorsInput{}
-	input.Bucket = "testabv"
+	input.Bucket = "test-abc"
 	input.CorsRules = []obs.CorsRule{{
 		AllowedOrigin: []string{"*"},
 		AllowedMethod: []string{
@@ -128,7 +128,7 @@ func (handler *Driver) InitOSSClient() error {
 		//if err != nil {
 		//	return err
 		//}
-		handler.bucket = "testabv"//handler.Policy.BucketName
+		handler.bucket = "test-abc"//handler.Policy.BucketName
 
 	}
 
@@ -507,7 +507,7 @@ func (handler Driver) Token(ctx context.Context, TTL int64, key string) (seriali
 	postPolicy := UploadPolicy{
 		Expiration: time.Now().UTC().Add(time.Duration(TTL) * time.Second).Format(time.RFC3339),
 		Conditions: []interface{}{
-			map[string]string{"bucket": "testabv"},
+			map[string]string{"bucket": "test-abc"},
 			[]string{"starts-with", "$key", path.Dir(savePath)},
 		},
 	}
