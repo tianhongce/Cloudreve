@@ -10,6 +10,7 @@ import (
 	"fmt"
 	model "github.com/HFO4/cloudreve/models"
 	obs "github.com/HFO4/cloudreve/obs"
+	"github.com/HFO4/cloudreve/obsutil"
 	"github.com/HFO4/cloudreve/pkg/filesystem/fsctx"
 	"github.com/HFO4/cloudreve/pkg/filesystem/response"
 	"github.com/HFO4/cloudreve/pkg/request"
@@ -67,7 +68,7 @@ func (handler *Driver) CORS() error {
 	}
 
 	input := &obs.SetBucketCorsInput{}
-	input.Bucket = "test-abc"
+	input.Bucket = obsutil.BucketName
 	input.CorsRules = []obs.CorsRule{{
 		AllowedOrigin: []string{"*"},
 		AllowedMethod: []string{
@@ -117,7 +118,7 @@ func (handler *Driver) InitOSSClient() error {
 		fmt.Printf("endpoit: %v, ak: %v, sk: %v\n", handler.Policy.Server, handler.Policy.AccessKey, handler.Policy.SecretKey)
 		//client, err := oss.New(handler.Policy.Server, handler.Policy.AccessKey, handler.Policy.SecretKey)
 		//obsClient, err := obs.New(handler.Policy.AccessKey, handler.Policy.SecretKey, handler.Policy.Server)
-		obsClient, err := obs.New("PAIOWFSCLFH2MA4ZD4LM", "mcMllKTwG5ubrfRASvjZtKoEkgK4ucMMnRBRqupL", "https://obs.cn-north-1.myhuaweicloud.com")
+		obsClient, err := obs.New(obsutil.AK, obsutil.SK, obsutil.Endpoint)
 		if err != nil {
 			return err
 		}
@@ -128,7 +129,7 @@ func (handler *Driver) InitOSSClient() error {
 		//if err != nil {
 		//	return err
 		//}
-		handler.bucket = "test-abc"//handler.Policy.BucketName
+		handler.bucket = obsutil.BucketName//handler.Policy.BucketName
 
 	}
 
@@ -507,7 +508,7 @@ func (handler Driver) Token(ctx context.Context, TTL int64, key string) (seriali
 	postPolicy := UploadPolicy{
 		Expiration: time.Now().UTC().Add(time.Duration(TTL) * time.Second).Format(time.RFC3339),
 		Conditions: []interface{}{
-			map[string]string{"bucket": "test-abc"},
+			map[string]string{"bucket": obsutil.BucketName},
 			[]string{"starts-with", "$key", path.Dir(savePath)},
 		},
 	}
@@ -547,7 +548,7 @@ func (handler Driver) getUploadCredential(ctx context.Context, policy UploadPoli
 	policyEncoded := base64.StdEncoding.EncodeToString(policyJSON)
 
 	// 签名上传策略
-	hmacSign := hmac.New(sha1.New, []byte("mcMllKTwG5ubrfRASvjZtKoEkgK4ucMMnRBRqupL"))
+	hmacSign := hmac.New(sha1.New, []byte(obsutil.SK))
 	_, err = io.WriteString(hmacSign, policyEncoded)
 	if err != nil {
 		return serializer.UploadCredential{}, err
@@ -557,7 +558,7 @@ func (handler Driver) getUploadCredential(ctx context.Context, policy UploadPoli
 	return serializer.UploadCredential{
 		Policy:    fmt.Sprintf("%s:%s", callbackPolicyEncoded, policyEncoded),
 		Path:      savePath,
-		AccessKey: "PAIOWFSCLFH2MA4ZD4LM",
+		AccessKey: obsutil.AK,
 		Token:     signature,
 	}, nil
 }

@@ -2,10 +2,13 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/HFO4/cloudreve/bootstrap"
+	"github.com/HFO4/cloudreve/obsutil"
 	"github.com/HFO4/cloudreve/pkg/conf"
 	"github.com/HFO4/cloudreve/pkg/util"
 	"github.com/HFO4/cloudreve/routers"
+	"log"
 )
 
 var (
@@ -21,6 +24,27 @@ func init() {
 }
 
 func main() {
+
+	config, err := obsutil.LoadObsConfig("./obsconfig.yml")
+	if err != nil {
+		log.Fatal("读取配置文件失败：", err)
+	}
+	log.Println("配置文件读取成功")
+	fmt.Println(config.ToString())
+
+	obsutil.BucketName = config.BucketName
+	obsutil.AK = config.Ak
+	obsutil.SK = config.Sk
+	obsutil.Endpoint = config.Endpoint
+
+	fmt.Println(obsutil.Endpoint)
+	fmt.Println(obsutil.AK)
+	fmt.Println(obsutil.SK)
+	fmt.Println(obsutil.BucketName)
+
+
+
+
 	if isEject {
 		// 开始导出内置静态资源文件
 		bootstrap.Eject()

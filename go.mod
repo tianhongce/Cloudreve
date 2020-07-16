@@ -44,4 +44,5 @@ require (
 	gopkg.in/go-playground/validator.v9 v9.29.1
 	gopkg.in/ini.v1 v1.51.0 // indirect
 	gopkg.in/mail.v2 v2.3.1 // indirect
+	gopkg.in/yaml.v2 v2.2.2
 )
