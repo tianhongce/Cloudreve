@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -24,7 +23,6 @@ import (
 	"github.com/HFO4/cloudreve/pkg/serializer"
 	"github.com/HFO4/cloudreve/pkg/util"
 	"github.com/gin-gonic/gin"
-	cossdk "github.com/tencentyun/cos-go-sdk-v5"
 )
 
 // PathTestService 本地路径测试服务
@@ -157,17 +155,17 @@ func (service *PolicyService) AddCORS() serializer.Response {
 			return serializer.Err(serializer.CodeInternalSetting, "跨域策略添加失败", err)
 		}
 	case "cos":
-		u, _ := url.Parse(policy.Server)
-		b := &cossdk.BaseURL{BucketURL: u}
+		//u, _ := url.Parse(policy.Server)
+		//b := &cossdk.BaseURL{BucketURL: u}
 		handler := cos.Driver{
 			Policy:     &policy,
 			HTTPClient: request.HTTPClient{},
-			Client: cossdk.NewClient(b, &http.Client{
-				Transport: &cossdk.AuthorizationTransport{
-					SecretID:  policy.AccessKey,
-					SecretKey: policy.SecretKey,
-				},
-			}),
+			//Client: cossdk.NewClient(b, &http.Client{
+			//	Transport: &cossdk.AuthorizationTransport{
+			//		SecretID:  policy.AccessKey,
+			//		SecretKey: policy.SecretKey,
+			//	},
+			//}),
 		}
 		if err := handler.CORS(); err != nil {
 			return serializer.Err(serializer.CodeInternalSetting, "跨域策略添加失败", err)

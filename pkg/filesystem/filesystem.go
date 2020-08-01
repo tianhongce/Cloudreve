@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"net/http"
 	"net/url"
 	"sync"
 
@@ -23,7 +22,6 @@ import (
 	"github.com/HFO4/cloudreve/pkg/request"
 	"github.com/HFO4/cloudreve/pkg/serializer"
 	"github.com/gin-gonic/gin"
-	cossdk "github.com/tencentyun/cos-go-sdk-v5"
 )
 
 // FSPool 文件系统资源池
@@ -208,16 +206,16 @@ func (fs *FileSystem) DispatchHandler() error {
 		}
 		return err
 	case "cos":
-		u, _ := url.Parse(currentPolicy.Server)
-		b := &cossdk.BaseURL{BucketURL: u}
+		//u, _ := url.Parse(currentPolicy.Server)
+		//b := &cossdk.BaseURL{BucketURL: u}
 		fs.Handler = cos.Driver{
 			Policy: currentPolicy,
-			Client: cossdk.NewClient(b, &http.Client{
-				Transport: &cossdk.AuthorizationTransport{
-					SecretID:  currentPolicy.AccessKey,
-					SecretKey: currentPolicy.SecretKey,
-				},
-			}),
+			//Client: cossdk.NewClient(b, &http.Client{
+			//	Transport: &cossdk.AuthorizationTransport{
+			//		SecretID:  currentPolicy.AccessKey,
+			//		SecretKey: currentPolicy.SecretKey,
+			//	},
+			//}),
 			HTTPClient: request.HTTPClient{},
 		}
 		return nil

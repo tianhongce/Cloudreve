@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/HFO4/cloudreve/pkg/filesystem"
-	"github.com/HFO4/cloudreve/pkg/filesystem/driver/cos"
 	"github.com/HFO4/cloudreve/pkg/filesystem/driver/local"
 	"github.com/HFO4/cloudreve/pkg/filesystem/driver/onedrive"
 	"github.com/HFO4/cloudreve/pkg/filesystem/driver/s3"
@@ -224,20 +223,21 @@ func (service *COSCallback) PreProcess(c *gin.Context) serializer.Response {
 	}
 	defer fs.Recycle()
 
-	// 获取回调会话
-	callbackSessionRaw, _ := c.Get("callbackSession")
-	callbackSession := callbackSessionRaw.(*serializer.UploadSession)
-
-	// 获取文件信息
-	info, err := fs.Handler.(cos.Driver).Meta(context.Background(), callbackSession.SavePath)
-	if err != nil {
-		return serializer.Err(serializer.CodeUploadFailed, "文件信息不一致", err)
-	}
-
-	// 验证实际文件信息与回调会话中是否一致
-	if callbackSession.Size != info.Size || callbackSession.Key != info.CallbackKey {
-		return serializer.Err(serializer.CodeUploadFailed, "文件信息不一致", err)
-	}
+	//todo modify for obs
+	//// 获取回调会话
+	//callbackSessionRaw, _ := c.Get("callbackSession")
+	//callbackSession := callbackSessionRaw.(*serializer.UploadSession)
+	//
+	//// 获取文件信息
+	//info, err := fs.Handler.(cos.Driver).Meta(context.Background(), callbackSession.SavePath)
+	//if err != nil {
+	//	return serializer.Err(serializer.CodeUploadFailed, "文件信息不一致", err)
+	//}
+	//
+	//// 验证实际文件信息与回调会话中是否一致
+	//if callbackSession.Size != info.Size || callbackSession.Key != info.CallbackKey {
+	//	return serializer.Err(serializer.CodeUploadFailed, "文件信息不一致", err)
+	//}
 
 	return ProcessCallback(service, c)
 }
