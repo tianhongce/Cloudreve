@@ -61,7 +61,7 @@ type Driver struct {
 
 // InitOSSClient 初始化OBS鉴权客户端
 func (handler *Driver) InitOBSClient() error {
-	fmt.Println("InitOBSClient 初始化OSS鉴权客户端")
+	fmt.Println("InitOBSClient 初始化COS-OBS鉴权客户端")
 	if handler.Policy == nil {
 		return errors.New("存储策略为空")
 	}
@@ -491,14 +491,15 @@ func (handler Driver) signSourceURL(ctx context.Context, path string, ttl int64,
 		finalURL.RawQuery = query.Encode()
 	}
 
-	if handler.Policy.BaseURL != "" {
-		cdnURL, err := url.Parse(handler.Policy.BaseURL)
-		if err != nil {
-			return "", err
-		}
-		finalURL.Host = cdnURL.Host
-		finalURL.Scheme = cdnURL.Scheme
-	}
+	// TODO 加上下面这几行下载和预览的时候会有问题
+	//if handler.Policy.BaseURL != "" {
+	//	cdnURL, err := url.Parse(handler.Policy.BaseURL)
+	//	if err != nil {
+	//		return "", err
+	//	}
+	//	finalURL.Host = cdnURL.Host
+	//	finalURL.Scheme = cdnURL.Scheme
+	//}
 
 	return finalURL.String(), nil
 }
