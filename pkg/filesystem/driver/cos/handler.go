@@ -491,15 +491,15 @@ func (handler Driver) signSourceURL(ctx context.Context, path string, ttl int64,
 		finalURL.RawQuery = query.Encode()
 	}
 
-	// TODO 加上下面这几行下载和预览的时候会有问题
-	//if handler.Policy.BaseURL != "" {
-	//	cdnURL, err := url.Parse(handler.Policy.BaseURL)
-	//	if err != nil {
-	//		return "", err
-	//	}
-	//	finalURL.Host = cdnURL.Host
-	//	finalURL.Scheme = cdnURL.Scheme
-	//}
+	// TODO 下面这几行将url替换为存储同策略的 ”文件资源根URL“
+	if handler.Policy.BaseURL != "" {
+		cdnURL, err := url.Parse(handler.Policy.BaseURL)
+		if err != nil {
+			return "", err
+		}
+		finalURL.Host = cdnURL.Host
+		finalURL.Scheme = cdnURL.Scheme
+	}
 
 	return finalURL.String(), nil
 }
