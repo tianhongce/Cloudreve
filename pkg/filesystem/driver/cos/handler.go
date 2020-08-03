@@ -10,7 +10,6 @@ import (
 	"fmt"
 	model "github.com/HFO4/cloudreve/models"
 	"github.com/HFO4/cloudreve/obs"
-	"github.com/HFO4/cloudreve/obsutil"
 	"github.com/HFO4/cloudreve/pkg/filesystem/fsctx"
 	"github.com/HFO4/cloudreve/pkg/filesystem/response"
 	"github.com/HFO4/cloudreve/pkg/request"
@@ -69,10 +68,11 @@ func (handler *Driver) InitOBSClient() error {
 	if handler.client == nil {
 		// 初始化客户端
 		fmt.Println("obsobsobs")
-		fmt.Printf("endpoit: %v, ak: %v, sk: %v\n", handler.Policy.Server, handler.Policy.AccessKey, handler.Policy.SecretKey)
+		fmt.Printf("endpoit: %v, ak: %v, sk: %v, bucket: %v\n",
+			handler.Policy.Server, handler.Policy.AccessKey, handler.Policy.SecretKey, handler.Policy.BucketName)
 		//client, err := oss.New(handler.Policy.Server, handler.Policy.AccessKey, handler.Policy.SecretKey)
 		//obsClient, err := obs.New(handler.Policy.AccessKey, handler.Policy.SecretKey, handler.Policy.Server)
-		obsClient, err := obs.New(obsutil.AK, obsutil.SK, obsutil.Endpoint)
+		obsClient, err := obs.New(handler.Policy.AccessKey, handler.Policy.SecretKey, handler.Policy.Server)
 		if err != nil {
 			return err
 		}
@@ -83,7 +83,7 @@ func (handler *Driver) InitOBSClient() error {
 		//if err != nil {
 		//	return err
 		//}
-		handler.bucket = obsutil.BucketName//handler.Policy.BucketName
+		handler.bucket = handler.Policy.BucketName
 
 	}
 
@@ -118,7 +118,7 @@ func (handler Driver) List(ctx context.Context, base string, recursive bool) ([]
 
 	for{
 		input := &obs.ListObjectsInput{}
-		input.Bucket = handler.bucket
+		input.Bucket = handler.Policy.BucketName
 		input.Marker=marker
 		input.Prefix=base
 		input.MaxKeys=1000
@@ -194,7 +194,7 @@ func (handler *Driver) CORS() error {
 	}
 
 	input := &obs.SetBucketCorsInput{}
-	input.Bucket = obsutil.BucketName
+	input.Bucket = handler.Policy.BucketName
 	input.CorsRules = []obs.CorsRule{{
 		AllowedOrigin: []string{"*"},
 		AllowedMethod: []string{
@@ -291,7 +291,7 @@ func (handler Driver) Put(ctx context.Context, file io.ReadCloser, dst string, s
 	//	return err
 	//}
 	input := &obs.PutObjectInput{}
-	input.Bucket = handler.bucket
+	input.Bucket = handler.Policy.BucketName
 	input.Key = dst
 	//input.Metadata = map[string]string{"meta": "value"}
 	input.Body = file
@@ -325,7 +325,7 @@ func (handler Driver) Delete(ctx context.Context, files []string) ([]string, err
 		deletes = append(deletes,del)
 	}
 	input := &obs.DeleteObjectsInput{}
-	input.Bucket = handler.bucket
+	input.Bucket = handler.Policy.BucketName
 	//TODO: file to objects
 	input.Objects=deletes
 	delRes, err := handler.client.DeleteObjects(input)
@@ -460,7 +460,7 @@ func (handler Driver) signSourceURL(ctx context.Context, path string, ttl int64,
 	input := &obs.CreateSignedUrlInput{}
 	input.Expires = *(*int)(unsafe.Pointer(&ttl))
 	input.Method = obs.HttpMethodGet
-	input.Bucket = handler.bucket
+	input.Bucket = handler.Policy.BucketName
 	input.Key = path
 	signedUrl, err := handler.client.CreateSignedUrl(input)
 	if err != nil {
@@ -537,7 +537,7 @@ func (handler Driver) Token(ctx context.Context, TTL int64, key string) (seriali
 	postPolicy := UploadPolicy{
 		Expiration: time.Now().UTC().Add(time.Duration(TTL) * time.Second).Format(time.RFC3339),
 		Conditions: []interface{}{
-			map[string]string{"bucket": obsutil.BucketName},
+			map[string]string{"bucket": handler.Policy.BucketName},
 			[]string{"starts-with", "$key", path.Dir(savePath)},
 		},
 	}
@@ -641,7 +641,7 @@ func (handler Driver) getUploadCredential(ctx context.Context, policy UploadPoli
 	policyEncoded := base64.StdEncoding.EncodeToString(policyJSON)
 
 	// 签名上传策略
-	hmacSign := hmac.New(sha1.New, []byte(obsutil.SK))
+	hmacSign := hmac.New(sha1.New, []byte(handler.Policy.SecretKey))
 	_, err = io.WriteString(hmacSign, policyEncoded)
 	if err != nil {
 		return serializer.UploadCredential{}, err
@@ -651,7 +651,7 @@ func (handler Driver) getUploadCredential(ctx context.Context, policy UploadPoli
 	return serializer.UploadCredential{
 		Policy:    policyEncoded,
 		Path:      savePath,
-		AccessKey: obsutil.AK,
+		AccessKey: handler.Policy.AccessKey,
 		Token:     signature,
 		KeyTime:   keyTime,
 	}, nil
