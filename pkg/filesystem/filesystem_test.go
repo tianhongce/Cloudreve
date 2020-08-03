@@ -1,6 +1,7 @@
 package filesystem
 
 import (
+	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
 	model "github.com/HFO4/cloudreve/models"
 	"github.com/HFO4/cloudreve/pkg/cache"
@@ -256,4 +257,12 @@ func TestFileSystem_SetTargetByInterface(t *testing.T) {
 		asserts.Len(fs.DirTarget, 1)
 		asserts.Len(fs.FileTarget, 1)
 	}
+}
+
+func Test_FormatServerUrl(t *testing.T){
+	url, err := formatServerUrl("https://test-1252243847.cos.ap-beijing.myqcloud.com","test-1252243847")
+	if err == nil{
+		fmt.Println(url)
+	}
+
 }

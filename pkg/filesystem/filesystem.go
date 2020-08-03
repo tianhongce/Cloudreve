@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net"
 	"net/url"
+	"strings"
 	"sync"
 
 	model "github.com/HFO4/cloudreve/models"
@@ -208,6 +210,14 @@ func (fs *FileSystem) DispatchHandler() error {
 	case "cos":
 		//u, _ := url.Parse(currentPolicy.Server)
 		//b := &cossdk.BaseURL{BucketURL: u}
+		// TODO:这里需要对server的url修改一下，obs中是 服务器域名，cos中是 桶+域名, 内网待定
+		// obs: https://obs.cn-north-1.myhuaweicloud.com
+		// cos: https://test-1252243847.cos.ap-beijing.myqcloud.com
+		// 去掉url中的桶名
+		serverUrl, err := formatServerUrl(currentPolicy.Server, currentPolicy.BucketName)
+		if err == nil{
+			currentPolicy.Server = serverUrl
+		}
 		fs.Handler = cos.Driver{
 			Policy: currentPolicy,
 			//Client: cossdk.NewClient(b, &http.Client{
@@ -314,4 +324,31 @@ func (fs *FileSystem) SetTargetByInterface(target interface{}) error {
 func (fs *FileSystem) CleanTargets() {
 	fs.FileTarget = fs.FileTarget[:0]
 	fs.DirTarget = fs.DirTarget[:0]
+}
+
+// 去除endpoint中的桶名
+func formatServerUrl(serverUrl string, bucketName string) (string, error){
+	if len(serverUrl)<=0{
+		return "", errors.New("url为空")
+	}
+	u, err := url.Parse(serverUrl)
+	if err != nil {
+		return "", errors.New("url解析错误")
+	}
+	//fmt.Println(u)
+	//u.Host
+	// 如果为IP的形式，返回IP
+	s := strings.Split(u.Host, "/") //这里只考虑了10.12.12.12/asdfas形式
+	address := net.ParseIP(s[0])
+	if address != nil {
+		return serverUrl, nil
+	}
+	s = strings.Split(u.Host, ".")
+	if bucketName!=s[0]{ //TODO
+		return serverUrl, nil
+	}
+	host:= strings.TrimPrefix(u.Host,s[0]+".")
+	//res:= u.Scheme + host
+	u.Host = host
+	return u.String(), nil
 }
