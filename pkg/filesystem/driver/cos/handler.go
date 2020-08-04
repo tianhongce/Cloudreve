@@ -72,7 +72,7 @@ func (handler *Driver) InitOBSClient() error {
 			handler.Policy.Server, handler.Policy.AccessKey, handler.Policy.SecretKey, handler.Policy.BucketName)
 		//client, err := oss.New(handler.Policy.Server, handler.Policy.AccessKey, handler.Policy.SecretKey)
 		//obsClient, err := obs.New(handler.Policy.AccessKey, handler.Policy.SecretKey, handler.Policy.Server)
-		obsClient, err := obs.New(handler.Policy.AccessKey, handler.Policy.SecretKey, handler.Policy.Server)
+		obsClient, err := obs.New(handler.Policy.AccessKey, handler.Policy.SecretKey, handler.Policy.Server, obs.WithPathStyle(true))
 		if err != nil {
 			return err
 		}
