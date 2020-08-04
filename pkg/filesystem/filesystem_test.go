@@ -260,7 +260,7 @@ func TestFileSystem_SetTargetByInterface(t *testing.T) {
 }
 
 func Test_FormatServerUrl(t *testing.T){
-	url, err := formatServerUrl("https://test-1252243847.cos.ap-beijing.myqcloud.com","test-1252243847")
+	url, err := formatServerUrl("https://123.123.123.123/test","test")
 	if err == nil{
 		fmt.Println(url)
 	}

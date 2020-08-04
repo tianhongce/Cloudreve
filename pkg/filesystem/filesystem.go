@@ -217,6 +217,7 @@ func (fs *FileSystem) DispatchHandler() error {
 		serverUrl, err := formatServerUrl(currentPolicy.Server, currentPolicy.BucketName)
 		if err == nil{
 			currentPolicy.Server = serverUrl
+			//currentPolicy.BucketName = ""
 		}
 		fs.Handler = cos.Driver{
 			Policy: currentPolicy,
@@ -337,11 +338,11 @@ func formatServerUrl(serverUrl string, bucketName string) (string, error){
 	}
 	//fmt.Println(u)
 	//u.Host
-	// 如果为IP的形式，返回IP
+	// 如果为IP的形式，返回IP, 判断IP格式的截取
 	s := strings.Split(u.Host, "/") //这里只考虑了10.12.12.12/asdfas形式
 	address := net.ParseIP(s[0])
 	if address != nil {
-		return serverUrl, nil
+		return address.String(), nil
 	}
 	s = strings.Split(u.Host, ".")
 	if bucketName!=s[0]{ //TODO
