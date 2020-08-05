@@ -247,12 +247,13 @@ func (handler Driver) Get(ctx context.Context, path string) (response.RSCloser, 
 	}
 
 	// 获取文件数据流
+	// TODO: 不知为啥使用 ip 和 https时，会返回请求超时，直接get这个请求就没有问题
 	resp, err := handler.HTTPClient.Request(
 		"GET",
 		downloadURL,
 		nil,
 		request.WithContext(ctx),
-		request.WithTimeout(time.Duration(100000)),
+		request.WithTimeout(time.Duration(0)),
 	).CheckHTTPResponse(200).GetRSCloser()
 	if err != nil {
 		return nil, err
@@ -479,7 +480,8 @@ func (handler Driver) signSourceURL(ctx context.Context, path string, ttl int64,
 	}
 
 	// 优先使用https
-	finalURL.Scheme = "https"
+	// TODO: 在handler.client.CreateSignedUrl(input)生成的url，如果是http,为80端口，如果是https，为443端口
+	//finalURL.Scheme = "https"
 
 	// 公有空间替换掉Key及不支持的头
 	if !handler.Policy.IsPrivate {
