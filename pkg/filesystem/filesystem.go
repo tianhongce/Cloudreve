@@ -342,7 +342,8 @@ func formatServerUrl(serverUrl string, bucketName string) (string, error){
 	s := strings.Split(u.Host, "/") //这里只考虑了10.12.12.12/asdfas形式
 	address := net.ParseIP(s[0])
 	if address != nil {
-		return address.String(), nil
+		//return "https://+"address.String(), nil  // 返回ip内容去掉桶名，https还是http
+		return serverUrl, nil    //如果是ip，返回原ip
 	}
 	s = strings.Split(u.Host, ".")
 	if bucketName!=s[0]{ //TODO

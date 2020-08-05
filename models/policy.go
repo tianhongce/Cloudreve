@@ -248,7 +248,7 @@ func (policy *Policy) GetUploadURL() string {
 	case "oss":
 		return "https://" + policy.BucketName + "." + policy.Server
 	case "cos":
-		return policy.Server +  "/" + policy.BucketName
+		return policy.Server +  "/" + policy.BucketName  //如果是ip，获取ip/桶名的格式
 	case "upyun":
 		return "https://v0.api.upyun.com/" + policy.BucketName
 	default:
