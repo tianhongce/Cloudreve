@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/HFO4/cloudreve/config"
 	model "github.com/HFO4/cloudreve/models"
 	"github.com/HFO4/cloudreve/pkg/cache"
 	"github.com/HFO4/cloudreve/pkg/filesystem"
@@ -223,6 +224,14 @@ func (service *FileIDService) CreateDocPreviewSession(ctx context.Context, c *gi
 	params := viewerBase.Query()
 	params.Set("src", downloadURL)
 	viewerBase.RawQuery = params.Encode()
+
+	// TODO: 从前端页面进行配置
+	if config.CloudreveConfig !=nil && config.CloudreveConfig.PreviewUrl != ""{
+		viewerBase, _ = url.Parse(config.CloudreveConfig.PreviewUrl)
+		params = viewerBase.Query()
+		params.Set("url", downloadURL)
+		viewerBase.RawQuery = params.Encode()
+	}
 
 	return serializer.Response{
 		Code: 0,
