@@ -48,10 +48,11 @@ func main() {
 	var err error
 	config.CloudreveConfig, err = config.LoadObsConfig("./config.yml")
 	if err != nil {
-		log.Fatal("读取配置文件失败：", err)
+		log.Println("读取配置文件失败：", err)
+	}else{
+		log.Println("配置文件读取成功")
+		fmt.Println(config.CloudreveConfig.ToString())
 	}
-	log.Println("配置文件读取成功")
-	fmt.Println(config.CloudreveConfig.ToString())
 
 	if isEject {
 		// 开始导出内置静态资源文件
