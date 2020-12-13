@@ -8,12 +8,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	model "github.com/HFO4/cloudreve/models"
-	"github.com/HFO4/cloudreve/obs"
-	"github.com/HFO4/cloudreve/pkg/filesystem/fsctx"
-	"github.com/HFO4/cloudreve/pkg/filesystem/response"
-	"github.com/HFO4/cloudreve/pkg/request"
-	"github.com/HFO4/cloudreve/pkg/serializer"
+	model "github.com/cloudreve/Cloudreve/v3/models"
+	"github.com/cloudreve/Cloudreve/v3/obs"
+	"github.com/cloudreve/Cloudreve/v3/pkg/filesystem/fsctx"
+	"github.com/cloudreve/Cloudreve/v3/pkg/filesystem/response"
+	"github.com/cloudreve/Cloudreve/v3/pkg/request"
+	"github.com/cloudreve/Cloudreve/v3/pkg/serializer"
 	"io"
 	"net/url"
 	"path"
@@ -90,7 +90,6 @@ func (handler *Driver) InitOBSClient() error {
 	return nil
 }
 
-
 // List 列出OSS上的文件
 func (handler Driver) List(ctx context.Context, base string, recursive bool) ([]response.Object, error) {
 	fmt.Println("List 列出OSS上的文件")
@@ -110,19 +109,19 @@ func (handler Driver) List(ctx context.Context, base string, recursive bool) ([]
 		marker    string
 		//objects   []oss.ObjectProperties
 		objects []obs.Content
-		commons   []string
+		commons []string
 	)
 	if !recursive {
 		delimiter = "/"
 	}
 
-	for{
+	for {
 		input := &obs.ListObjectsInput{}
 		input.Bucket = handler.Policy.BucketName
-		input.Marker=marker
-		input.Prefix=base
-		input.MaxKeys=1000
-		input.Delimiter=delimiter
+		input.Marker = marker
+		input.Prefix = base
+		input.MaxKeys = 1000
+		input.Delimiter = delimiter
 
 		listObjects, err := handler.client.ListObjects(input)
 		if err != nil {
@@ -316,23 +315,22 @@ func (handler Driver) Delete(ctx context.Context, files []string) ([]string, err
 	// 删除文件
 	//delRes, err := handler.bucket.DeleteObjects(files)
 
-
-	fmt.Println("删除的文件：",files)
+	fmt.Println("删除的文件：", files)
 	var deletes []obs.ObjectToDelete
 
-	for _ , v:= range files{
+	for _, v := range files {
 		var del obs.ObjectToDelete
-		del.Key=v
-		deletes = append(deletes,del)
+		del.Key = v
+		deletes = append(deletes, del)
 	}
 	input := &obs.DeleteObjectsInput{}
 	input.Bucket = handler.Policy.BucketName
 	//TODO: file to objects
-	input.Objects=deletes
+	input.Objects = deletes
 	delRes, err := handler.client.DeleteObjects(input)
 
 	if err != nil {
-		fmt.Println("error:" ,err.Error())
+		fmt.Println("error:", err.Error())
 		return files, err
 	}
 
@@ -341,7 +339,7 @@ func (handler Driver) Delete(ctx context.Context, files []string) ([]string, err
 	//if len(failed) > 0 {
 	//	return failed, errors.New("删除失败")
 	//}
-	if len(files)!=len(delRes.Deleteds){
+	if len(files) != len(delRes.Deleteds) {
 		return []string{}, errors.New("删除失败")
 	}
 
@@ -455,7 +453,6 @@ func (handler Driver) Source(
 	return handler.signSourceURL(ctx, path, ttl, fileName)
 }
 
-
 func (handler Driver) signSourceURL(ctx context.Context, path string, ttl int64, fileName string) (string, error) {
 	fmt.Println("signSourceURL")
 	input := &obs.CreateSignedUrlInput{}
@@ -505,7 +502,6 @@ func (handler Driver) signSourceURL(ctx context.Context, path string, ttl int64,
 
 	return finalURL.String(), nil
 }
-
 
 // Token 获取上传策略和认证Token
 func (handler Driver) Token(ctx context.Context, TTL int64, key string) (serializer.UploadCredential, error) {
@@ -574,55 +570,55 @@ func (handler Driver) Token(ctx context.Context, TTL int64, key string) (seriali
 //}
 
 func (handler Driver) getUploadCredential(ctx context.Context, policy UploadPolicy, keyTime string) (serializer.UploadCredential, error) {
-/*	// 读取上下文中生成的存储路径
-	savePath, ok := ctx.Value(fsctx.SavePathCtx).(string)
-	if !ok {
-		return serializer.UploadCredential{}, errors.New("无法获取存储路径")
-	}
+	/*	// 读取上下文中生成的存储路径
+		savePath, ok := ctx.Value(fsctx.SavePathCtx).(string)
+		if !ok {
+			return serializer.UploadCredential{}, errors.New("无法获取存储路径")
+		}
 
-	// 编码上传策略
-	policyJSON, err := json.Marshal(policy)
-	if err != nil {
-		return serializer.UploadCredential{}, err
-	}
-	policyEncoded := base64.StdEncoding.EncodeToString(policyJSON)
+		// 编码上传策略
+		policyJSON, err := json.Marshal(policy)
+		if err != nil {
+			return serializer.UploadCredential{}, err
+		}
+		policyEncoded := base64.StdEncoding.EncodeToString(policyJSON)
 
-	// 签名上传策略
-	hmacSign := hmac.New(sha1.New, []byte(handler.Policy.SecretKey))
-	_, err = io.WriteString(hmacSign, keyTime)
-	if err != nil {
-		return serializer.UploadCredential{}, err
-	}
-	signKey := fmt.Sprintf("%x", hmacSign.Sum(nil))
+		// 签名上传策略
+		hmacSign := hmac.New(sha1.New, []byte(handler.Policy.SecretKey))
+		_, err = io.WriteString(hmacSign, keyTime)
+		if err != nil {
+			return serializer.UploadCredential{}, err
+		}
+		signKey := fmt.Sprintf("%x", hmacSign.Sum(nil))
 
-	sha1Sign := sha1.New()
-	_, err = sha1Sign.Write(policyJSON)
-	if err != nil {
-		return serializer.UploadCredential{}, err
-	}
-	stringToSign := fmt.Sprintf("%x", sha1Sign.Sum(nil))
+		sha1Sign := sha1.New()
+		_, err = sha1Sign.Write(policyJSON)
+		if err != nil {
+			return serializer.UploadCredential{}, err
+		}
+		stringToSign := fmt.Sprintf("%x", sha1Sign.Sum(nil))
 
-	// 最终签名
-	hmacFinalSign := hmac.New(sha1.New, []byte(signKey))
-	_, err = hmacFinalSign.Write([]byte(stringToSign))
-	if err != nil {
-		return serializer.UploadCredential{}, err
-	}
-	signature := hmacFinalSign.Sum(nil)
+		// 最终签名
+		hmacFinalSign := hmac.New(sha1.New, []byte(signKey))
+		_, err = hmacFinalSign.Write([]byte(stringToSign))
+		if err != nil {
+			return serializer.UploadCredential{}, err
+		}
+		signature := hmacFinalSign.Sum(nil)
 
-	return serializer.UploadCredential{
-		Policy:    policyEncoded,
-		Path:      savePath,
-		AccessKey: handler.Policy.AccessKey,
-		Token:     fmt.Sprintf("%x", signature),
-		KeyTime:   keyTime,
-	}, nil*/
+		return serializer.UploadCredential{
+			Policy:    policyEncoded,
+			Path:      savePath,
+			AccessKey: handler.Policy.AccessKey,
+			Token:     fmt.Sprintf("%x", signature),
+			KeyTime:   keyTime,
+		}, nil*/
 	// 读取上下文中生成的存储路径
 	savePath, ok := ctx.Value(fsctx.SavePathCtx).(string)
 	if !ok {
 		return serializer.UploadCredential{}, errors.New("无法获取存储路径")
 	}
-	fmt.Println("存储路径：",savePath)
+	fmt.Println("存储路径：", savePath)
 
 	// 处理回调策略
 	//callbackPolicyEncoded := ""
