@@ -37,7 +37,7 @@ func InitApplication() {
 
 `)
 
-	go CheckUpdate()
+	//go CheckUpdate()
 }
 
 type GitHubRelease struct {
